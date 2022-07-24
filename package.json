@@ -20,7 +20,7 @@
   "homepage": "https://github.com/Pcents/Employee-Tracking-with-a-Content-Managment-System#readme",
   "dependencies": {
     "console.table": "^0.10.0",
-    "inquirer": "^8.2.4",
+    "inquirer": "^7.0.0",
     "mysql2": "^2.3.3"
   }
 }
