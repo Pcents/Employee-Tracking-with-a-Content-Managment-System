@@ -12,6 +12,7 @@ const db = mysql.createConnection(
   console.log(`Connected to the employee_db database.`)
 );
 // menu to view departments, roles, employees
+// should i just call the tables here?
 const promptDB = () => {
   return inquirer
     .prompt([
@@ -32,6 +33,7 @@ const promptDB = () => {
     .then((choices) => {
       switch (choices.databases) {
         case "Departments":
+          db.query("SELECT * FROM employee_db.employee;");
           tableDept();
           break;
         case "Roles":
@@ -87,10 +89,16 @@ const addDepartment = () => {
       },
     ])
     .then((answer) => {
-      console.log(answer);
-      db.query("INSERT INTO departments SET ?", {
-        department_name: answer.department,
-      });
+      db.query(
+        "INSERT INTO employee_db.departments (department_name) VALUES ?",
+        [answer.department],
+        (err, res) => {
+          if (err) {
+            console.log(err);
+          }
+          console.log(res);
+        }
+      );
       promptDB();
     });
 };
@@ -112,10 +120,16 @@ const addRoles = () => {
     ])
     .then((answers) => {
       console.log(answers);
-      db.query("INSERT INTO roles SET ?", {
-        title: answers.role,
-        salary: answers.salary,
-      });
+      db.query(
+        "INSERT INTO employee_db.roles (title, salary) VALUES ?",
+        [answers.role, answers.salary],
+        (err, res) => {
+          if (err) {
+            console.log(err);
+          }
+          console.log(res);
+        }
+      );
       promptDB();
     });
 };
@@ -148,12 +162,21 @@ const addEmployees = () => {
     ])
     .then((answers) => {
       console.log(answers);
-      db.query("INSERT INTO employee SET ?", {
-        employee_id: answers.emp_id,
-        first_name: answers.salary,
-        last_name: answers.last_name,
-        manager: answers.manager,
-      });
+      db.query(
+        "INSERT INTO employee_db.employee (first_name, last_name, manager) VALUES ?",
+        [
+          answers.emp_id,
+          answers.last_name,
+          answers.first_name,
+          answers.manager,
+        ],
+        (err, res) => {
+          if (err) {
+            console.log(err);
+          }
+          console.log(res);
+        }
+      );
       promptDB();
     });
 };
@@ -172,6 +195,10 @@ const addEmployees = () => {
 // });
 
 // view all roles->job titles, role id, dept for role, salary
+
+// const tableDept=()=>
+// return console.table(SELECT * ROLES);
+
 // view all emp->ids, first name, last name, title, dept, manager
 
 // CRUD ops
