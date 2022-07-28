@@ -21,19 +21,18 @@ CREATE TABLE roles (
 );
 
 CREATE TABLE employee (
-    employee_id INT AUTO_INCREMENT,
+    employee_id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     first_name VARCHAR (30),
     last_name VARCHAR (30),
-    manager VARCHAR (30)
-    department_id INT,
+    manager INT,
     role_id INT,
 
     FOREIGN KEY (role_id)
     REFERENCES roles(role_id)
     ON DELETE SET NULL,
     
-    FOREIGN KEY (department_id)
-    REFERENCES departments(department_id)
+    FOREIGN KEY (manager)
+    REFERENCES employee(employee_id)
     ON DELETE SET NULL
 );
 

@@ -1,15 +1,16 @@
 const inquirer = require("inquirer");
 const cTable = require("console.table");
 const mysql = require("mysql2");
+require("dotenv").config();
 
 const db = mysql.createConnection(
   {
     host: "localhost",
-    user: "root",
-    password: "Swordfish007!",
-    database: "employee_db",
-  },
-  console.log(`Connected to the employee_db database.`)
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_DATABASE,
+  }
+  //   console.log(`Connected to the employee_db database.`)
 );
 // menu to view departments, roles, employees
 // should i just call the tables here?
@@ -33,14 +34,29 @@ const promptDB = () => {
     .then((choices) => {
       switch (choices.databases) {
         case "Departments":
-          db.query("SELECT * FROM employee_db.employee;");
-          tableDept();
+          //   can put an array of objects into-serialize it for the console.table
+          db.query(
+            "SELECT * FROM employee_db.departments;",
+            function (err, results) {
+              console.table("\n", results);
+            }
+          );
+          promptDB();
           break;
         case "Roles":
-          tableRoles();
+          db.query("SELECT * FROM employee_db.roles;", function (err, results) {
+            console.table("\n", results);
+          });
+          promptDB();
           break;
         case "Employees":
-          tableEmployees();
+          db.query(
+            "SELECT * FROM employee_db.employee;",
+            function (err, results) {
+              console.table("\n", results);
+            }
+          );
+          promptDB();
           break;
         case "Add Department, Role, or Employee":
           promptAdd();
@@ -50,12 +66,15 @@ const promptDB = () => {
           break;
         case "Quit":
           "Good Bye";
+          break;
+        default:
+          break;
       }
     });
 };
 // add department, add role, add employee, update employee role
 const promptAdd = () => {
-  return inquirer
+  inquirer
     .prompt([
       {
         type: "list",
@@ -80,7 +99,7 @@ const promptAdd = () => {
 };
 // add dept->name of dept-create
 const addDepartment = () => {
-  return inquirer
+  inquirer
     .prompt([
       {
         type: "input",
@@ -89,22 +108,21 @@ const addDepartment = () => {
       },
     ])
     .then((answer) => {
-      db.query(
-        "INSERT INTO employee_db.departments (department_name) VALUES ?",
-        [answer.department],
-        (err, res) => {
-          if (err) {
-            console.log(err);
-          }
-          console.log(res);
+      const sql =
+        "INSERT INTO employee_db.departments (department_name) VALUES (?)";
+      const params = [answer.department];
+      db.query(sql, params, (err, answer) => {
+        if (err) {
+          console.log(err);
         }
-      );
+        console.log(answer);
+      });
       promptDB();
     });
 };
 // add role->name, salary, dept-create
 const addRoles = () => {
-  return inquirer
+  inquirer
     .prompt([
       {
         type: "input",
@@ -116,32 +134,88 @@ const addRoles = () => {
         name: "salary",
         message: "What is the salary?",
       },
-      // department id?
+      // department id? this is broke
     ])
     .then((answers) => {
       console.log(answers);
-      db.query(
-        "INSERT INTO employee_db.roles (title, salary) VALUES ?",
-        [answers.role, answers.salary],
-        (err, res) => {
-          if (err) {
-            console.log(err);
-          }
-          console.log(res);
+      const sql = "INSERT INTO employee_db.roles (title, salary) VALUES ?";
+      const params = [answers.role, answers.salary];
+      db.query(sql, params, (err, answers) => {
+        if (err) {
+          console.log(err);
         }
-      );
+        console.log(answers);
+      });
       promptDB();
     });
 };
 // add emp->name, role, manager-create
 const addEmployees = () => {
-  return inquirer
+  const sql1 = "SELECT * FROM employee_db.employee";
+
+  db.query(sql1, (err, results) => {
+    if (err) {
+      console.log(err);
+    }
+    console.log(results);
+    // we go through the results to make an array of objects that has name key and value key
+    const manMap = results.map((manager) => ({
+      name: `${manager.first_name} ${manager.last_name}`,
+      value: manager.employee_id,
+    }));
+    console.log(manMap);
+
+    inquirer
+      .prompt([
+        {
+          type: "input",
+          name: "first_name",
+          message: "What their first name?",
+        },
+        {
+          type: "input",
+          name: "last_name",
+          message: "What their last name?",
+        },
+        {
+          type: "list",
+          name: "manager",
+          message: "Who is their manager?",
+          choices: manMap,
+        },
+        {
+          type: "list",
+          name: "role_id",
+          message: "What is ,their role ID?",
+          choices: roleMap,
+        },
+        // role id?
+      ])
+      .then((answers) => {
+        console.log(answers);
+        const sql =
+          "INSERT INTO employee_db.employee (first_name, last_name, manager, role_id) VALUES ?";
+        const params = [
+          answers.last_name,
+          answers.first_name,
+          answers.manager,
+          answers.role_id,
+        ];
+        db.query(sql, params, (err, answers) => {
+          if (err) {
+            console.log(err);
+          }
+          console.log(answers);
+        });
+        promptDB();
+      });
+  });
+};
+// CRUD ops
+// update emp->select and update new role-update
+const promptUpdate = () => {
+  inquirer
     .prompt([
-      {
-        type: "input",
-        name: "emp_id",
-        message: "What is the employee ID number?",
-      },
       {
         type: "input",
         name: "first_name",
@@ -154,55 +228,25 @@ const addEmployees = () => {
       },
       {
         type: "input",
-        name: "manager",
-        message: "Who is their manager?",
+        name: "role",
+        message: "What their new role?",
       },
-      // department id?
-      // role id?
     ])
     .then((answers) => {
       console.log(answers);
-      db.query(
-        "INSERT INTO employee_db.employee (first_name, last_name, manager) VALUES ?",
-        [
-          answers.emp_id,
-          answers.last_name,
-          answers.first_name,
-          answers.manager,
-        ],
-        (err, res) => {
-          if (err) {
-            console.log(err);
-          }
-          console.log(res);
+      const sql =
+        "UPDATE employee_db.employee (first_name, last_name, manager) WHERE ?";
+      const params = [answers.last_name, answers.first_name, answers.role];
+      db.query(sql, params, (err, answers) => {
+        if (err) {
+          console.log(err);
         }
-      );
+        console.log(answers);
+      });
       promptDB();
     });
 };
-
-// .then((answer) => {
-//   // view all dept->dept name and ids
-//   // sequelize.connect(function err {
-//   // if (err) throw err;
-
-//   const deptAdd = "INSERT INTO departments (department_name) VALUES ?";
-//   const params = answer.department;
-//   db.query(deptAdd, params, (err, success) => {
-//     if (err) throw err;
-//     console.log("success");
-//   });
-// });
-
-// view all roles->job titles, role id, dept for role, salary
-
-// const tableDept=()=>
-// return console.table(SELECT * ROLES);
-
-// view all emp->ids, first name, last name, title, dept, manager
-
-// CRUD ops
-
-// update emp->select and update new role-update
-
-promptDB();
+db.connect(() => {
+  console.log(`Connected to the employee_db database.`);
+  promptDB();
+});
