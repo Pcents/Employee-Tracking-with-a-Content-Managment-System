@@ -35,6 +35,3 @@ CREATE TABLE employee (
     REFERENCES employee(employee_id)
     ON DELETE SET NULL
 );
-
-
--- foreign key manager and need manager table?

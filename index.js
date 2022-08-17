@@ -3,17 +3,12 @@ const cTable = require("console.table");
 const mysql = require("mysql2");
 require("dotenv").config();
 
-const db = mysql.createConnection(
-  {
-    host: "localhost",
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_DATABASE,
-  }
-  //   console.log(`Connected to the employee_db database.`)
-);
-// menu to view departments, roles, employees
-// should i just call the tables here?
+const db = mysql.createConnection({
+  host: "localhost",
+  user: process.env.DB_USER,
+  password: process.env.DB_PASSWORD,
+  database: process.env.DB_DATABASE,
+});
 const promptDB = () => {
   return inquirer
     .prompt([
@@ -51,7 +46,7 @@ const promptDB = () => {
           break;
         case "Employees":
           db.query(
-            "SELECT * FROM employee_db.employee;",
+            "SELECT * FROM employee_db.employee LEFT JOIN roles ON employee.role_id = roles.role_id ;",
             function (err, results) {
               console.table("\n", results);
             }
@@ -115,56 +110,86 @@ const addDepartment = () => {
         if (err) {
           console.log(err);
         }
-        console.log(answer);
+        console.log("success");
       });
       promptDB();
     });
 };
 // add role->name, salary, dept-create
 const addRoles = () => {
-  inquirer
-    .prompt([
-      {
-        type: "input",
-        name: "role",
-        message: "What title would you like to add?",
-      },
-      {
-        type: "input",
-        name: "salary",
-        message: "What is the salary?",
-      },
-      // department id? this is broke
-    ])
-    .then((answers) => {
-      console.log(answers);
-      const sql = "INSERT INTO employee_db.roles (title, salary) VALUES ?";
-      const params = [answers.role, answers.salary];
-      db.query(sql, params, (err, answers) => {
-        if (err) {
-          console.log(err);
-        }
-        console.log(answers);
-      });
-      promptDB();
-    });
-};
-// add emp->name, role, manager-create
-const addEmployees = () => {
-  const sql1 = "SELECT * FROM employee_db.employee";
+  const sql1 = "SELECT * FROM employee_db.departments";
 
   db.query(sql1, (err, results) => {
     if (err) {
       console.log(err);
     }
-    console.log(results);
+    // console.log(results);
+    // we go through the results to make an array of objects that has name key and value key
+    const deptMap = results.map((department) => {
+      return {
+        name: `${department.department_name} ${department.department_id}`,
+        value: department.department_id,
+      };
+    });
+    console.log(deptMap);
+
+    inquirer
+      .prompt([
+        {
+          type: "input",
+          name: "role",
+          message: "What title would you like to add?",
+        },
+        {
+          type: "input",
+          name: "salary",
+          message: "What is the salary?",
+        },
+        {
+          type: "list",
+          name: "dept_role",
+          message: "What department is it in?",
+          choices: deptMap,
+        },
+        // department id? this is broke-need the primary key to insert as the foreign key into the table
+        // need to know department_id
+      ])
+      .then((answers) => {
+        console.log(answers);
+        const sql =
+          "INSERT INTO employee_db.roles (title, salary, department_id) VALUES (?,?,?)";
+        const params = [answers.role, answers.salary, answers.dept_role];
+        db.query(sql, params, (err, answers) => {
+          if (err) {
+            console.log(err);
+          }
+          console.log(answers);
+          promptDB();
+        });
+      });
+  });
+};
+// add emp->name, role, manager-create
+const addEmployees = () => {
+  const sql1 =
+    "SELECT * FROM employee_db.employee LEFT JOIN roles ON employee.role_id = roles.role_id";
+
+  db.query(sql1, (err, results) => {
+    if (err) {
+      console.log(err);
+    }
+    // console.log(results);
     // we go through the results to make an array of objects that has name key and value key
     const manMap = results.map((manager) => ({
       name: `${manager.first_name} ${manager.last_name}`,
       value: manager.employee_id,
     }));
-    console.log(manMap);
-
+    // console.log(manMap); i receive the list of employees and their id
+    const rolMap = results.map((roles) => ({
+      name: `${roles.title} ${roles.role_id}`,
+      value: roles.role_id,
+    }));
+    // console.log(rolMap);I receive the role title and id with a value being the id
     inquirer
       .prompt([
         {
@@ -186,19 +211,19 @@ const addEmployees = () => {
         {
           type: "list",
           name: "role_id",
-          message: "What is ,their role ID?",
-          choices: roleMap,
+          message: "What is their role title?",
+          choices: rolMap,
         },
         // role id?
       ])
       .then((answers) => {
         console.log(answers);
         const sql =
-          "INSERT INTO employee_db.employee (first_name, last_name, manager, role_id) VALUES ?";
+          "INSERT INTO employee_db.employee (first_name, last_name, employee_id, role_id) VALUES (?)";
         const params = [
           answers.last_name,
           answers.first_name,
-          answers.manager,
+          answers.employee_id,
           answers.role_id,
         ];
         db.query(sql, params, (err, answers) => {
